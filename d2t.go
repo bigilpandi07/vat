@@ -85,7 +85,7 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 
 		//	Use Webhook
 		Info.Println("Setting webhooks to fetch updates")
-		_, err := bot.SetWebhook(tbot.NewWebhook("https://d2t-bot.herokuapp.com/d2t_converter/" + bot.Token))
+		_, err := bot.SetWebhook(tbot.NewWebhook("https://d2t-bot.ishanjain.me/d2t_converter/" + bot.Token))
 		if err != nil {
 			Error.Fatalln("Problem in setting webhook", err.Error())
 		}
@@ -97,7 +97,7 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 
 		http.HandleFunc("/torrent/", serveTorrent)
 
-		Info.Println("Starting HTTPS Server")
+		Info.Println("Starting HTTP Server")
 		go http.ListenAndServe(":"+PORT, nil)
 
 		w, err := bot.GetWebhookInfo()
