@@ -30,9 +30,10 @@ func main() {
 	GO_ENV = os.Getenv("GO_ENV")
 	if GO_ENV == "" {
 		Warn.Println("$GO_ENV not set")
+
+		//Set default $GO_ENV value to "development"
+		GO_ENV = "development"
 	}
-	//Set default $GO_ENV value to "development"
-	GO_ENV = "development"
 
 	Info.Println("Starting bot...")
 
@@ -84,7 +85,7 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 
 		//	Use Webhook
 		Info.Println("Setting webhooks to fetch updates")
-		_, err := bot.SetWebhook(tbot.NewWebhook("https://hidden-inlet-30131.herokuapp.com/d2t_converter/" + bot.Token))
+		_, err := bot.SetWebhook(tbot.NewWebhookWithCert("https://ec2-13-228-77-227.ap-southeast-1.compute.amazonaws.com/d2t_converter/"+bot.Token, "cert.pem"))
 		if err != nil {
 			Error.Fatalln("Problem in setting webhook", err.Error())
 		}
@@ -97,7 +98,7 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 		http.HandleFunc("/torrent/", serveTorrent)
 
 		Info.Println("Starting HTTPS Server")
-		go http.ListenAndServeTLS(":"+PORT, "cert.pem", "private.key", nil)
+		go http.ListenAndServeTLS(":"+PORT, "cert.pem", "key.pem", nil)
 
 		w, err := bot.GetWebhookInfo()
 		if err != nil {
