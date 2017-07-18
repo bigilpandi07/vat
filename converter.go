@@ -11,14 +11,22 @@ import (
 	"time"
 	"github.com/getlantern/errors"
 	"strconv"
+	"gopkg.in/mgo.v2/bson"
+	"bytes"
 )
+
+var AnnounceList = [][]string{
+	{"udp://tracker.openbittorrent.com:80"},
+	{"udp://tracker.publicbt.com:80"},
+}
 
 type DownloadJob struct {
 	DU          *url.URL
 	Metainfo    metainfo.MetaInfo
-	File        string
+	Filename    string
 	ContentType string
 	Size        int64
+	SizeInMiB   float64
 	User        UserData
 }
 
@@ -29,6 +37,15 @@ type UserData struct {
 	ChatID    int64
 }
 
+type DatabaseItem struct {
+	Filename    string
+	DU          string
+	ContentType string
+	Size        int64
+	Hash        string
+	File        bson.Binary
+}
+
 func (t *DownloadJob) parseURL(u string) error {
 	a, err := url.ParseRequestURI(u)
 
@@ -36,9 +53,9 @@ func (t *DownloadJob) parseURL(u string) error {
 		return err
 	}
 	t.DU = a
-	//Set File name
+	//Set Filename name
 	p := t.DU.Path[strings.LastIndex(t.DU.Path, "/")+1:]
-	t.File = p
+	t.Filename = p
 
 	return nil
 }
@@ -56,21 +73,52 @@ func (t *DownloadJob) fetchMetadata() error {
 
 	t.Size = resp.ContentLength
 	t.ContentType = resp.Header.Get("Content-Type")
-
+	t.SizeInMiB = float64(t.Size) / (1024 * 1024)
 	return nil
 }
 
-func (t *DownloadJob) save() {
-	x, _ := os.Create(t.File + "." + t.Metainfo.HashInfoBytes().String() + ".Metainfo")
+func (t *DownloadJob) save() error {
+	sess := dbSess.Copy()
 
-	t.Metainfo.Write(x)
-	defer x.Close()
+	c := sess.DB("burnbitbot").C("data")
+
+	var a bytes.Buffer
+
+	t.Metainfo.Write(&a)
+
+	_, err := c.Upsert(bson.M{"_id": t.DU.String()}, &DatabaseItem{
+		DU:          t.DU.String(),
+		Size:        t.Size,
+		ContentType: t.ContentType,
+		Filename:    t.Filename,
+		Hash:        string(t.Metainfo.HashInfoBytes().String()),
+		File:        bson.Binary{Data: a.Bytes(), Kind: 0},
+	})
+	if err != nil {
+		return err
+	}
+	Info.Println("Saved", t.DU.String())
+	return nil
+}
+
+func find(t DownloadJob) (*DatabaseItem, error) {
+	sess := dbSess.Copy()
+	c := sess.DB("burnbitbot").C("data")
+
+	di := &DatabaseItem{}
+	err := c.Find(bson.M{"_id": t.DU.String(), "size": t.Size, "filename": t.Filename}).One(di)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return di, nil
 }
 
 func (t *DownloadJob) Clean() {
-	err := os.RemoveAll(t.File)
+	err := os.RemoveAll(t.Filename)
 	if err != nil {
-		Error.Println("Error in deleting File/Folder", err.Error())
+		Error.Println("Error in deleting Filename/Folder", err.Error())
 	}
 }
 
@@ -85,7 +133,7 @@ func (t *DownloadJob) download() error {
 		return errors.New("Error in downloading file", err.Error())
 	}
 
-	f, err := os.Create(t.File)
+	f, err := os.Create(t.Filename)
 	if err != nil {
 		return err
 	}
@@ -110,7 +158,7 @@ func (t *DownloadJob) convert() error {
 	info := metainfo.Info{
 		PieceLength: 256 * 1024,
 	}
-	err := info.BuildFromFilePath(t.File)
+	err := info.BuildFromFilePath(t.Filename)
 	if err != nil {
 		return err
 	}

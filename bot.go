@@ -6,17 +6,19 @@ import (
 	"os"
 	"github.com/beeker1121/goque"
 	"strconv"
+	"gopkg.in/mgo.v2"
 )
 
 var (
-	TOKEN        = ""
-	PORT         = ""
-	GO_ENV       = ""
-	AnnounceList = [][]string{
-		{"udp://tracker.openbittorrent.com:80"},
-		{"udp://tracker.publicbt.com:80"},
-	}
-	q *goque.Queue
+	TOKEN  = ""
+	PORT   = ""
+	GO_ENV = ""
+	q      *goque.Queue
+	dbSess *mgo.Session
+)
+
+const (
+	HOST = "https://d2t-bot.ishanjain.me"
 )
 
 /*
@@ -59,6 +61,12 @@ func main() {
 		bot.Debug = false
 	}
 
+	Info.Println("Connecting to Database")
+	dbSess, err = mgo.Dial("mongodb://localhost:27017/burnbitbot")
+	if err != nil {
+		Error.Fatalln("Error in connecting to database", err.Error())
+	}
+
 	Info.Printf("Authorized on account %s(@%s)\n", bot.Self.FirstName, bot.Self.UserName)
 
 	//Create a persistent Queue
@@ -66,6 +74,9 @@ func main() {
 	if err != nil {
 		Error.Fatalln("Error in creating Download Queue")
 	}
+
+	Info.Println("Starting Queue Processor")
+	go startQueueProcessor(bot)
 
 	updates := fetchUpdates(bot)
 
@@ -104,7 +115,7 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 
 		//	Use Webhook
 		Info.Println("Setting webhooks to fetch updates")
-		_, err := bot.SetWebhook(tbot.NewWebhook("https://d2t-bot.ishanjain.me/d2t_converter/" + bot.Token))
+		_, err := bot.SetWebhook(tbot.NewWebhook(HOST + "/d2t_converter/" + bot.Token))
 		if err != nil {
 			Error.Fatalln("Problem in setting webhook", err.Error())
 		}
@@ -173,7 +184,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			return
 		}
 
-		//Fetch Metadata about the File
+		//Fetch Metadata about the Filename
 		err = i.fetchMetadata()
 		if err != nil {
 			Warn.Println("Error in fetching metadata", err.Error())
@@ -200,14 +211,14 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 
 		item.ToObject(&j)
 
-		Info.Println(item.ID, i.User.Username, j.File, j.ContentType, j.Size, j.DU.String())
+		Info.Println(item.ID, i.User.Username, j.Filename, j.ContentType, j.Size, j.DU.String())
 
 		msg := tbot.NewMessage(u.Message.Chat.ID,
 			"Queued Task \nCurrently, " + strconv.FormatUint(item.ID, 10) + " Position in Queue"+
-				"\nName: "+ i.File+
-				"\nLength: "+ strconv.FormatFloat(float64(i.Size)/(1024*1024), 'f', 4, 64)+ "MiB"+
+				"\nName: "+ i.Filename+
+				"\nLength: "+ strconv.FormatFloat(i.SizeInMiB, 'f', 4, 64)+ "MiB"+
 				"\nType: "+ i.ContentType+
-				"URL: "+ i.DU.String())
+				"\nURL: "+ i.DU.String())
 		bot.Send(msg)
 
 	}
