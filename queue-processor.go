@@ -74,17 +74,26 @@ func startQueueProcessor(bot *tbot.BotAPI) {
 				bot.Send(msg)
 
 				Warn.Println("Failed to save Hash", err.Error())
+				continue
+			}
+
+			//Remove the Downloaded file
+			err = dj.Clean()
+			if err != nil {
+				Error.Println("Error in cleaning", err.Error())
 			}
 
 			//Everything's Done! Send a Download link to User
-			i, err := find(dj)
+			i, err := find(&dj)
 			if err != nil {
 				msg = tbot.NewMessage(dj.User.ChatID, "Failed in Saving to Database !")
 				bot.Send(msg)
+
+				Warn.Println("Problem in find", err.Error())
 				continue
 			}
 			msg = tbot.NewMessage(dj.User.ChatID, "Successful!"+
-				"Link: "+ HOST+ "/torrent/"+ i.Hash)
+				"\nLink: "+ HOST+ "/torrent/"+ i.Hash)
 			bot.Send(msg)
 
 		} else {

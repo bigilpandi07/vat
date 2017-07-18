@@ -208,6 +208,13 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			UserID:    u.Message.From.ID,
 		}
 
+		if item, err := find(i); err == nil {
+			Info.Println("Already in Database")
+			msg := tbot.NewMessage(u.Message.Chat.ID, "Successful!"+
+				"\nLink: "+ HOST+ "/torrent/"+ item.Hash)
+			bot.Send(msg)
+			return
+		}
 		item, err := q.EnqueueObject(i)
 		if err != nil {
 			Error.Println("Error in Enqueuing item", err.Error())
@@ -218,13 +225,13 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 		item.ToObject(&j)
 
 		Info.Println(item.ID, i.User.Username, j.Filename, j.ContentType, j.Size, j.DU.String())
-
 		msg := tbot.NewMessage(u.Message.Chat.ID,
-			"Queued Task \nCurrently, " + strconv.FormatUint(item.ID, 10) + " Position in Queue"+
+			"Queued Task \nID, " + strconv.FormatUint(item.ID, 10)+
 				"\nName: "+ i.Filename+
 				"\nLength: "+ strconv.FormatFloat(i.SizeInMiB, 'f', 4, 64)+ "MiB"+
 				"\nType: "+ i.ContentType+
-				"\nURL: "+ i.DU.String())
+				"\nURL: "+ i.DU.String()+
+				"\n\nYou'll notified about the progress")
 		bot.Send(msg)
 
 	}

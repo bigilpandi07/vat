@@ -101,7 +101,7 @@ func (t *DownloadJob) save() error {
 	return nil
 }
 
-func find(t DownloadJob) (*DatabaseItem, error) {
+func find(t *DownloadJob) (*DatabaseItem, error) {
 	sess := dbSess.Copy()
 	c := sess.DB("burnbitbot").C("data")
 
@@ -115,11 +115,12 @@ func find(t DownloadJob) (*DatabaseItem, error) {
 	return di, nil
 }
 
-func (t *DownloadJob) Clean() {
+func (t *DownloadJob) Clean() error {
 	err := os.RemoveAll(t.Filename)
 	if err != nil {
-		Error.Println("Error in deleting Filename/Folder", err.Error())
+		return err
 	}
+	return nil
 }
 
 func (t *DownloadJob) download() error {
