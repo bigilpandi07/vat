@@ -18,8 +18,8 @@ var (
 )
 
 const (
-	//HOST = "https://d2t-bot.ishanjain.me"
-	HOST = "https://radiant-plains-91554.herokuapp.com"
+	HOST = "https://d2t-bot.ishanjain.me"
+	//HOST = "https://radiant-plains-91554.herokuapp.com"
 )
 
 /*
