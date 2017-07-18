@@ -1,12 +1,12 @@
 package main
 
 import (
+	"github.com/beeker1121/goque"
 	tbot "github.com/go-telegram-bot-api/telegram-bot-api"
+	"gopkg.in/mgo.v2"
 	"net/http"
 	"os"
-	"github.com/beeker1121/goque"
 	"strconv"
-	"gopkg.in/mgo.v2"
 )
 
 var (
@@ -19,7 +19,6 @@ var (
 
 const (
 	HOST = "https://d2t-bot.ishanjain.me"
-	//HOST = "https://radiant-plains-91554.herokuapp.com"
 )
 
 /*
@@ -59,7 +58,7 @@ func main() {
 	}
 
 	if GO_ENV == "development" {
-		bot.Debug = false
+		bot.Debug = true
 	}
 
 	Info.Println("Connecting to Database")
@@ -121,18 +120,18 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 
 		//	Use Webhook
 		Info.Println("Setting webhooks to fetch updates")
-		_, err := bot.SetWebhook(tbot.NewWebhook(HOST + "/d2t_converter/" + bot.Token))
+		_, err := bot.SetWebhook(tbot.NewWebhook(HOST + "/burnbitbot/" + bot.Token))
 		if err != nil {
 			Error.Fatalln("Problem in setting webhook", err.Error())
 		}
 
-		updates := bot.ListenForWebhook("/d2t_converter/" + bot.Token)
+		updates := bot.ListenForWebhook("/burnbitbot/" + bot.Token)
 
 		//redirect users visiting "/" to bot's telegram page
 		http.HandleFunc("/", redirectToTelegram)
 
 		//The handler for Metainfo Download links
-		http.HandleFunc("/Metainfo/", serveTorrent)
+		http.HandleFunc("/torrent/", serveTorrent)
 
 		Info.Println("Starting HTTP Server")
 		go http.ListenAndServe(":"+PORT, nil)
@@ -146,10 +145,6 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 		Info.Println("Is Set?:", w.IsSet())
 		return updates
 	}
-}
-
-func redirectToTelegram(resp http.ResponseWriter, req *http.Request) {
-	http.Redirect(resp, req, "https://t.me/d2t-bot", http.StatusTemporaryRedirect)
 }
 
 func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
@@ -211,10 +206,11 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 		if item, err := find(i); err == nil {
 			Info.Println("Already in Database")
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Successful!"+
-				"\nLink: "+ HOST+ "/torrent/"+ item.Hash)
+				"\nLink: "+HOST+"/torrent/"+item.Hash)
 			bot.Send(msg)
 			return
 		}
+
 		item, err := q.EnqueueObject(i)
 		if err != nil {
 			Error.Println("Error in Enqueuing item", err.Error())
@@ -226,13 +222,21 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 
 		Info.Println(item.ID, i.User.Username, j.Filename, j.ContentType, j.Size, j.DU.String())
 		msg := tbot.NewMessage(u.Message.Chat.ID,
-			"Queued Task \nID, " + strconv.FormatUint(item.ID, 10)+
-				"\nName: "+ i.Filename+
-				"\nLength: "+ strconv.FormatFloat(i.SizeInMiB, 'f', 4, 64)+ "MiB"+
-				"\nType: "+ i.ContentType+
-				"\nURL: "+ i.DU.String()+
+			"Queued Task \nID, "+strconv.FormatUint(item.ID, 10)+
+				"\nName: "+i.Filename+
+				"\nLength: "+strconv.FormatFloat(i.SizeInMiB, 'f', 4, 64)+"MiB"+
+				"\nType: "+i.ContentType+
+				"\nURL: "+i.DU.String()+
 				"\n\nYou'll notified about the progress")
 		bot.Send(msg)
 
 	}
+}
+
+func serveTorrent(resp http.ResponseWriter, req *http.Request) {
+	resp.Write([]byte(req.URL.String()))
+}
+
+func redirectToTelegram(resp http.ResponseWriter, req *http.Request) {
+	http.Redirect(resp, req, "https://t.me/burnbitbot", http.StatusTemporaryRedirect)
 }

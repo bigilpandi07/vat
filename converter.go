@@ -1,18 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"github.com/anacrolix/torrent/bencode"
 	"github.com/anacrolix/torrent/metainfo"
+	"github.com/getlantern/errors"
+	"gopkg.in/mgo.v2/bson"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-	"github.com/getlantern/errors"
-	"strconv"
-	"gopkg.in/mgo.v2/bson"
-	"bytes"
 )
 
 var AnnounceList = [][]string{
@@ -46,6 +46,7 @@ type DatabaseItem struct {
 	File        bson.Binary
 }
 
+//Parse URL and make sure it's a valid one
 func (t *DownloadJob) parseURL(u string) error {
 	a, err := url.ParseRequestURI(u)
 
@@ -60,11 +61,11 @@ func (t *DownloadJob) parseURL(u string) error {
 	return nil
 }
 
+//Fetch Metadata about provided link, like it's size and content type
 func (t *DownloadJob) fetchMetadata() error {
 	resp, err := http.Head(t.DU.String())
 	if err != nil {
 		return err
-
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -77,6 +78,7 @@ func (t *DownloadJob) fetchMetadata() error {
 	return nil
 }
 
+//Save To database
 func (t *DownloadJob) save() error {
 	sess := dbSess.Copy()
 
@@ -101,6 +103,15 @@ func (t *DownloadJob) save() error {
 	return nil
 }
 
+//Find if a link like the one provided already exists.
+//TODO:Make a smarter find function
+//Currently a url like dl.ishanjain.me/xyz and dl.ishanjain.me/?id=abc are different
+//Even if they return the exact same file
+//A smarter find function'll send a request to a url after removing all query parameters
+//And then send a request with all provided query parameters and then decide by
+//Checking content length, type and E-tags(if it has etags) to make sure if it's same
+//If it is then it'll proceed to search the database after removing all query parameters
+//If there is a result, return that, If there is no such url, go through the normal process
 func find(t *DownloadJob) (*DatabaseItem, error) {
 	sess := dbSess.Copy()
 	c := sess.DB("burnbitbot").C("data")
@@ -115,6 +126,7 @@ func find(t *DownloadJob) (*DatabaseItem, error) {
 	return di, nil
 }
 
+//Removes Downloaded Files
 func (t *DownloadJob) Clean() error {
 	err := os.RemoveAll(t.Filename)
 	if err != nil {
@@ -123,6 +135,7 @@ func (t *DownloadJob) Clean() error {
 	return nil
 }
 
+//Download the file
 func (t *DownloadJob) download() error {
 
 	resp, err := http.Get(t.DU.String())
@@ -145,6 +158,7 @@ func (t *DownloadJob) download() error {
 	return nil
 }
 
+//Create a Meta file
 func (t *DownloadJob) convert() error {
 
 	mi := metainfo.MetaInfo{
