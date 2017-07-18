@@ -18,7 +18,8 @@ var (
 )
 
 const (
-	HOST = "https://d2t-bot.ishanjain.me"
+	//HOST = "https://d2t-bot.ishanjain.me"
+	HOST = "https://radiant-plains-91554.herokuapp.com"
 )
 
 /*
@@ -62,7 +63,12 @@ func main() {
 	}
 
 	Info.Println("Connecting to Database")
-	dbSess, err = mgo.Dial("mongodb://localhost:27017/burnbitbot")
+
+	MONGOADDR := os.Getenv("MONGODB_URI")
+	if MONGOADDR == "" {
+		MONGOADDR = "mongodb://localhost:27017/burnbitbot"
+	}
+	dbSess, err = mgo.Dial(MONGOADDR)
 	if err != nil {
 		Error.Fatalln("Error in connecting to database", err.Error())
 	}
