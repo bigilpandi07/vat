@@ -68,7 +68,7 @@ func (t *DownloadJob) fetchMetadata() error {
 		return err
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK || resp.ContentLength == 0 {
 		return errors.New("Status Code is NOT OK(" + strconv.Itoa(resp.StatusCode) + ")")
 	}
 

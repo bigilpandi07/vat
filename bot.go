@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -153,7 +155,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 	if u.Message.IsCommand() {
 		switch u.Message.Text {
 		case "/start", "/help":
-			msg := tbot.NewMessage(u.Message.Chat.ID, "This bot Converts Direct links to Metainfo, Provide a valid http link to get started")
+			msg := tbot.NewMessage(u.Message.Chat.ID, "This bot Converts Direct links to a Torrent, Provide a valid http link to get started")
 			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
 
@@ -235,7 +237,22 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 }
 
 func serveTorrent(resp http.ResponseWriter, req *http.Request) {
-	resp.Write([]byte(req.URL.String()))
+
+	hash := strings.Split(req.URL.String(), "/torrent/")[1]
+	hash = strings.Split(hash, "/")[0]
+
+	sess := dbSess.Copy()
+	c := sess.DB("burnbitbot").C("data")
+
+	di := &DatabaseItem{}
+	err := c.Find(bson.M{"hash": hash}).One(di)
+
+	if err != nil {
+		http.Error(resp, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	resp.Write(di.File.Data)
 }
 
 func redirectToTelegram(resp http.ResponseWriter, req *http.Request) {
