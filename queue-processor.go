@@ -19,3 +19,4 @@ func serveTorrents() {
 func serveTorrent(resp http.ResponseWriter, req *http.Request) {
 	resp.Write([]byte(req.URL.String()))
 }
+

@@ -4,6 +4,8 @@ import (
 	tbot "github.com/go-telegram-bot-api/telegram-bot-api"
 	"net/http"
 	"os"
+	"github.com/beeker1121/goque"
+	"strconv"
 )
 
 var (
@@ -14,7 +16,18 @@ var (
 		{"udp://tracker.openbittorrent.com:80"},
 		{"udp://tracker.publicbt.com:80"},
 	}
+	q *goque.Queue
 )
+
+/*
+ * Flow of this bot
+ * Take a URL from user
+ * Validate URL
+ * Send a head request at that url and get detail like length, filename and queue it.
+ * Send a "Queued" message with some stats to user
+ * Start Processing top item from queue and send a processing message to the user who queued that link
+ * Process link and upon completion store it in database and send the a download link to the user
+ */
 
 func main() {
 	TOKEN = os.Getenv("TOKEN")
@@ -46,7 +59,13 @@ func main() {
 		bot.Debug = false
 	}
 
-	Info.Printf("Authorized on account %s\n", bot.Self.UserName)
+	Info.Printf("Authorized on account %s(@%s)\n", bot.Self.FirstName, bot.Self.UserName)
+
+	//Create a persistent Queue
+	q, err = goque.OpenQueue("download_queue")
+	if err != nil {
+		Error.Fatalln("Error in creating Download Queue")
+	}
 
 	updates := fetchUpdates(bot)
 
@@ -64,7 +83,7 @@ func main() {
 func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 	if GO_ENV == "development" {
 		//Use polling, because testing on local machine
-
+		//I'll remove this once I complete this bot
 		//Remove webhook
 		bot.RemoveWebhook()
 
@@ -95,7 +114,8 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 		//redirect users visiting "/" to bot's telegram page
 		http.HandleFunc("/", redirectToTelegram)
 
-		http.HandleFunc("/torrent/", serveTorrent)
+		//The handler for Metainfo Download links
+		http.HandleFunc("/Metainfo/", serveTorrent)
 
 		Info.Println("Starting HTTP Server")
 		go http.ListenAndServe(":"+PORT, nil)
@@ -120,7 +140,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 	if u.Message.IsCommand() {
 		switch u.Message.Text {
 		case "/start", "/help":
-			msg := tbot.NewMessage(u.Message.Chat.ID, "This bot Converts Direct links to Torrent, Provide a valid http link to get started")
+			msg := tbot.NewMessage(u.Message.Chat.ID, "This bot Converts Direct links to Metainfo, Provide a valid http link to get started")
 			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
 
@@ -133,8 +153,9 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 	}
 
 	if u.Message.Text != "" {
-		i := &Input{}
+		i := &DownloadJob{}
 
+		//Validate URL
 		err := i.parseURL(u.Message.Text)
 		if err != nil {
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Invalid URL")
@@ -143,45 +164,51 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			return
 		}
 
-		if i.du.Scheme != "http" {
-			msg := tbot.NewMessage(u.Message.Chat.ID, "Only http url scheme is supported")
+		//Make sure it's http/ftp
+		if i.DU.Scheme != "http" && i.DU.Scheme != "ftp" {
+			msg := tbot.NewMessage(u.Message.Chat.ID, "Only http/ftp url scheme is supported")
 			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
-			Warn.Println("Invalid URL Scheme", i.du.String())
+			Warn.Println("Invalid URL Scheme", i.DU.String())
 			return
 		}
 
-		err = i.download()
+		//Fetch Metadata about the File
+		err = i.fetchMetadata()
 		if err != nil {
-			Warn.Println("Problem in downloading file", err.Error())
-			Warn.Println("URL:", i.du.String())
-
-			msg := tbot.NewMessage(u.Message.Chat.ID, "Problem in downloading file, Please retry")
+			Warn.Println("Error in fetching metadata", err.Error())
+			msg := tbot.NewMessage(u.Message.Chat.ID, "Error in fetching Metadata "+err.Error())
 			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
-
-			//Delete Downloaded file, because this is probably just a part of something and no reason to keep it
-			i.Clean()
-
 			return
 		}
 
-		err = i.createTorrent()
+		//Store Data about the user
+		i.User = UserData{
+			MessageID: u.Message.MessageID,
+			Username:  u.Message.From.UserName,
+			ChatID:    u.Message.Chat.ID,
+			UserID:    u.Message.From.ID,
+		}
+
+		item, err := q.EnqueueObject(i)
 		if err != nil {
-			Warn.Println("Error in conversion", err.Error())
-
-			msg := tbot.NewMessage(u.Message.Chat.ID, "Error in conversion")
-
-			msg.ReplyToMessageID = u.Message.MessageID
-			bot.Send(msg)
-
-			//Delete Downloaded file, because some error occurred in created a torrent
-			i.Clean()
-			return
+			Error.Println("Error in Enqueuing item", err.Error())
 		}
 
-		i.save()
+		var j DownloadJob
 
-		i.Clean()
+		item.ToObject(&j)
+
+		Info.Println(item.ID, i.User.Username, j.File, j.ContentType, j.Size, j.DU.String())
+
+		msg := tbot.NewMessage(u.Message.Chat.ID,
+			"Queued Task \nCurrently, " + strconv.FormatUint(item.ID, 10) + " Position in Queue"+
+				"\nName: "+ i.File+
+				"\nLength: "+ strconv.FormatFloat(float64(i.Size)/(1024*1024), 'f', 4, 64)+ "MiB"+
+				"\nType: "+ i.ContentType+
+				"URL: "+ i.DU.String())
+		bot.Send(msg)
+
 	}
 }
