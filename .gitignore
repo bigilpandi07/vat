@@ -17,4 +17,4 @@
 .idea
 d2t_converter
 /vendor/github.com/
-
+/vendor/golang.org/

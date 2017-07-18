@@ -1,0 +1,76 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "zKCY7ejiOtTFAlpVNrg191ExfSI=",
+			"path": "github.com/anacrolix/missinggo",
+			"revision": "00e7d699a9063f958f13814802cd39e5ac9c85b4",
+			"revisionTime": "2017-03-27T05:39:47Z"
+		},
+		{
+			"checksumSHA1": "ua971oBANOt3tRv0ITaUWj+V6Xs=",
+			"path": "github.com/anacrolix/missinggo/slices",
+			"revision": "00e7d699a9063f958f13814802cd39e5ac9c85b4",
+			"revisionTime": "2017-03-27T05:39:47Z"
+		},
+		{
+			"checksumSHA1": "vqUdTgxBpEn9v2in1Gh9yfiJr70=",
+			"path": "github.com/anacrolix/torrent/bencode",
+			"revision": "58a24196ce836032e37f48bc3e70571a9cdc735b",
+			"revisionTime": "2017-04-25T00:39:44Z"
+		},
+		{
+			"checksumSHA1": "+a5Dadqmx9L3aVCQ7M6WIU+ZyY0=",
+			"path": "github.com/anacrolix/torrent/metainfo",
+			"revision": "58a24196ce836032e37f48bc3e70571a9cdc735b",
+			"revisionTime": "2017-04-25T00:39:44Z"
+		},
+		{
+			"checksumSHA1": "c1lrLhhegA7fiaMWAmTXKTWHvmY=",
+			"path": "github.com/bradfitz/iter",
+			"revision": "454541ec3da2a73fc34fd049b19ee5777bf19345",
+			"revisionTime": "2014-01-24T04:19:15Z"
+		},
+		{
+			"checksumSHA1": "AANTVr9CVVyzsgviODY6Wi2thuM=",
+			"path": "github.com/fatih/color",
+			"revision": "62e9147c64a1ed519147b62a56a14e83e2be02c1",
+			"revisionTime": "2017-05-23T20:24:04Z"
+		},
+		{
+			"checksumSHA1": "P8QTYeGce4zkbCe3NdL6Q91PcTs=",
+			"path": "github.com/go-telegram-bot-api/telegram-bot-api",
+			"revision": "ebe7b8254e1592d3701010dc4f927a87b3559397",
+			"revisionTime": "2017-07-02T20:43:42Z"
+		},
+		{
+			"checksumSHA1": "MrqRXuqj5suGXqcRUUwi+YA7PmE=",
+			"origin": "github.com/fatih/color/vendor/github.com/mattn/go-colorable",
+			"path": "github.com/mattn/go-colorable",
+			"revision": "62e9147c64a1ed519147b62a56a14e83e2be02c1",
+			"revisionTime": "2017-05-23T20:24:04Z"
+		},
+		{
+			"checksumSHA1": "a/chskqRYBBHS8lDTpB3FQqgHb8=",
+			"origin": "github.com/fatih/color/vendor/github.com/mattn/go-isatty",
+			"path": "github.com/mattn/go-isatty",
+			"revision": "62e9147c64a1ed519147b62a56a14e83e2be02c1",
+			"revisionTime": "2017-05-23T20:24:04Z"
+		},
+		{
+			"checksumSHA1": "t8jzPFIv4DNACv+cuZoigNmjPLQ=",
+			"path": "github.com/technoweenie/multipartstreamer",
+			"revision": "a90a01d73ae432e2611d178c18367fbaa13e0154",
+			"revisionTime": "2013-10-20T00:18:33Z"
+		},
+		{
+			"checksumSHA1": "oBjdFvDUZpioGsB6URqe16hDQUg=",
+			"origin": "github.com/fatih/color/vendor/golang.org/x/sys/unix",
+			"path": "golang.org/x/sys/unix",
+			"revision": "62e9147c64a1ed519147b62a56a14e83e2be02c1",
+			"revisionTime": "2017-05-23T20:24:04Z"
+		}
+	],
+	"rootPath": "github.com/ishanjain28/d2t_converter"
+}

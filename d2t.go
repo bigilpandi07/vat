@@ -2,14 +2,8 @@ package main
 
 import (
 	tbot "github.com/go-telegram-bot-api/telegram-bot-api"
-	"os"
 	"net/http"
-	"net/url"
-	"strings"
-	"io"
-	"github.com/anacrolix/torrent/bencode"
-	"github.com/anacrolix/torrent/metainfo"
-	"time"
+	"os"
 )
 
 var (
@@ -21,12 +15,6 @@ var (
 		{"udp://tracker.publicbt.com:80"},
 	}
 )
-
-type Input struct {
-	du      *url.URL
-	torrent metainfo.MetaInfo
-	file    string
-}
 
 func main() {
 	TOKEN = os.Getenv("TOKEN")
@@ -94,9 +82,9 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 		//Remove any existing webhook
 		bot.RemoveWebhook()
 
-		//	Use Webhook, because deploying on heroku
+		//	Use Webhook
 		Info.Println("Setting webhooks to fetch updates")
-		_, err := bot.SetWebhook(tbot.NewWebhook("https://dry-hamlet-60060.herokuapp.com/d2t_converter/" + bot.Token))
+		_, err := bot.SetWebhook(tbot.NewWebhook("https://hidden-inlet-30131.herokuapp.com/d2t_converter/" + bot.Token))
 		if err != nil {
 			Error.Fatalln("Problem in setting webhook", err.Error())
 		}
@@ -105,6 +93,8 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 
 		//redirect users visiting "/" to bot's telegram page
 		http.HandleFunc("/", redirectToTelegram)
+
+		http.HandleFunc("/torrent/", serveTorrent)
 
 		Info.Println("Starting HTTPS Server")
 		go http.ListenAndServeTLS(":"+PORT, "cert.pem", "private.key", nil)
@@ -166,6 +156,9 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Problem in downloading file, Please retry")
 			bot.Send(msg)
 
+			//Delete Downloaded file, because this is probably just a part of something and no reason to keep it
+			i.Clean()
+
 			return
 		}
 
@@ -176,76 +169,14 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Error in conversion")
 			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
+
+			//Delete Downloaded file, because some error occurred in created a torrent
+			i.Clean()
 			return
 		}
 
 		i.save()
+
+		i.Clean()
 	}
-}
-
-func (t *Input) parseURL(u string) (error) {
-	a, err := url.ParseRequestURI(u)
-
-	if err != nil {
-		return err
-	}
-	t.du = a
-	return nil
-}
-
-func (t *Input) createTorrent() error {
-
-	mi := metainfo.MetaInfo{
-		AnnounceList: AnnounceList,
-		CreatedBy:    "d2t_bot(https://t.me/d2t_bot) and https://github.com/anacrolix/torrent",
-		CreationDate: time.Now().Unix(),
-		URLList: []string{
-			t.du.String(),
-		},
-	}
-
-	info := metainfo.Info{
-		PieceLength: 256 * 1024,
-	}
-	err := info.BuildFromFilePath(t.file)
-	if err != nil {
-		return err
-	}
-
-	mi.InfoBytes, err = bencode.Marshal(info)
-
-	if err != nil {
-		return err
-	}
-
-	t.torrent = mi
-	return nil
-}
-
-func (t *Input) save() {
-	x, _ := os.Create(t.file + ".torrent")
-
-	t.torrent.Write(x)
-	defer x.Close()
-}
-
-func (t *Input) download() error {
-
-	resp, err := http.Get(t.du.String())
-	if err != nil {
-		return err
-	}
-
-	p := t.du.Path[strings.LastIndex(t.du.Path, "/")+1:]
-
-	t.file = p
-
-	f, err := os.Create(p)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	io.Copy(f, resp.Body)
-
-	return nil
 }
