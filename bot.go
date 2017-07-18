@@ -77,10 +77,11 @@ func main() {
 	//Create a persistent Queue
 	q, err = goque.OpenQueue("download_queue")
 	if err != nil {
-		Error.Fatalln("Error in creating Download Queue")
+		Error.Fatalln("Error in creating Download Queue", err.Error())
 	}
 
 	Info.Println("Starting Queue Processor")
+
 	go startQueueProcessor(bot)
 
 	updates := fetchUpdates(bot)
@@ -206,7 +207,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 		if item, err := find(i); err == nil {
 			Info.Println("Already in Database")
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Successful!"+
-				"\nLink: "+HOST+"/torrent/"+item.Hash)
+				"\nLink: "+ HOST+ "/torrent/"+ item.Hash)
 			bot.Send(msg)
 			return
 		}
@@ -222,11 +223,11 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 
 		Info.Println(item.ID, i.User.Username, j.Filename, j.ContentType, j.Size, j.DU.String())
 		msg := tbot.NewMessage(u.Message.Chat.ID,
-			"Queued Task \nID, "+strconv.FormatUint(item.ID, 10)+
-				"\nName: "+i.Filename+
-				"\nLength: "+strconv.FormatFloat(i.SizeInMiB, 'f', 4, 64)+"MiB"+
-				"\nType: "+i.ContentType+
-				"\nURL: "+i.DU.String()+
+			"Queued Task \nID, " + strconv.FormatUint(item.ID, 10)+
+				"\nName: "+ i.Filename+
+				"\nLength: "+ strconv.FormatFloat(i.SizeInMiB, 'f', 4, 64)+ "MiB"+
+				"\nType: "+ i.ContentType+
+				"\nURL: "+ i.DU.String()+
 				"\n\nYou'll notified about the progress")
 		bot.Send(msg)
 

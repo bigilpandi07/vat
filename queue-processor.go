@@ -24,10 +24,10 @@ func startQueueProcessor(bot *tbot.BotAPI) {
 			//Send a message to user as well
 			msg := tbot.NewMessage(dj.User.ChatID,
 				"Downloading "+
-					"\nName: "+dj.Filename+
-					"\nLength: "+strconv.FormatFloat(float64(dj.Size)/(1024*1024), 'f', 4, 64)+"MiB"+
-					"\nType: "+dj.ContentType+
-					"\nURL: "+dj.DU.String())
+					"\nName: "+ dj.Filename+
+					"\nLength: "+ strconv.FormatFloat(float64(dj.Size)/(1024*1024), 'f', 4, 64)+ "MiB"+
+					"\nType: "+ dj.ContentType+
+					"\nURL: "+ dj.DU.String())
 
 			bot.Send(msg)
 
@@ -37,8 +37,8 @@ func startQueueProcessor(bot *tbot.BotAPI) {
 
 			if err != nil {
 				msg := tbot.NewMessage(dj.User.ChatID,
-					"Failed in Downloading "+dj.DU.String()+
-						"\nReason: "+err.Error())
+					"Failed in Downloading " + dj.DU.String()+
+						"\nReason: "+ err.Error())
 
 				bot.Send(msg)
 				continue
@@ -46,10 +46,10 @@ func startQueueProcessor(bot *tbot.BotAPI) {
 
 			msg = tbot.NewMessage(dj.User.ChatID,
 				"Calculating Hash "+
-					"\nName: "+dj.Filename+
-					"\nLength: "+strconv.FormatFloat(float64(dj.Size)/(1024*1024), 'f', 4, 64)+"MiB"+
-					"\nType: "+dj.ContentType+
-					"\nURL: "+dj.DU.String())
+					"\nName: "+ dj.Filename+
+					"\nLength: "+ strconv.FormatFloat(float64(dj.Size)/(1024*1024), 'f', 4, 64)+ "MiB"+
+					"\nType: "+ dj.ContentType+
+					"\nURL: "+ dj.DU.String())
 
 			bot.Send(msg)
 
@@ -57,7 +57,7 @@ func startQueueProcessor(bot *tbot.BotAPI) {
 			if err != nil {
 				msg = tbot.NewMessage(dj.User.ChatID,
 					"Error in Calculating Hash "+
-						"\nReason: "+err.Error())
+						"\nReason: "+ err.Error())
 				bot.Send(msg)
 
 				Warn.Println("Error in calculating Hash", err.Error())
@@ -81,7 +81,7 @@ func startQueueProcessor(bot *tbot.BotAPI) {
 
 			//Everything's Done! Send a Download link to User
 			msg = tbot.NewMessage(dj.User.ChatID, "Successful!"+
-				"\nLink: "+HOST+"/torrent/"+string(dj.Metainfo.HashInfoBytes()))
+				"\nLink: "+ HOST+ "/torrent/"+ dj.Metainfo.HashInfoBytes().String())
 			bot.Send(msg)
 
 		} else {

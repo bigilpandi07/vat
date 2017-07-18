@@ -93,7 +93,7 @@ func (t *DownloadJob) save() error {
 		Size:        t.Size,
 		ContentType: t.ContentType,
 		Filename:    t.Filename,
-		Hash:        string(t.Metainfo.HashInfoBytes().String()),
+		Hash:        t.Metainfo.HashInfoBytes().String(),
 		File:        bson.Binary{Data: a.Bytes(), Kind: 0},
 	})
 	if err != nil {
