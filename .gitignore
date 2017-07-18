@@ -19,3 +19,4 @@ d2t_converter
 /vendor/github.com/
 /vendor/golang.org/
 /download_queue/
+/vendor/gopkg.in/
