@@ -209,7 +209,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 		if item, err := find(i); err == nil {
 			Info.Println("Already in Database")
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Successful!"+
-				"\nLink: "+ HOST+ "/torrent/"+ item.Hash)
+				"\nLink: "+ HOST+ "/torrent/"+ item.Hash+ ".torrent")
 			bot.Send(msg)
 			return
 		}
@@ -239,7 +239,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 func serveTorrent(resp http.ResponseWriter, req *http.Request) {
 
 	hash := strings.Split(req.URL.String(), "/torrent/")[1]
-	hash = strings.Split(hash, "/")[0]
+	hash = strings.Split(hash, ".torrent")[0]
 
 	sess := dbSess.Copy()
 	c := sess.DB("burnbitbot").C("data")
@@ -253,9 +253,12 @@ func serveTorrent(resp http.ResponseWriter, req *http.Request) {
 			http.Error(resp, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		http.Error(resp, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		Warn.Println("Error in serving", err.Error())
 		return
 	}
 
+	//Set proper header
+	resp.Header().Set("Content-Type", "application/x-bittorrent")
 	resp.Write(di.File.Data)
 }
 
