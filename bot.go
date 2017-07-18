@@ -210,6 +210,8 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			Info.Println("Already in Database")
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Successful!"+
 				"\nLink: "+ HOST+ "/torrent/"+ item.Hash+ ".torrent")
+
+			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
 			return
 		}

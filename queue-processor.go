@@ -82,6 +82,7 @@ func startQueueProcessor(bot *tbot.BotAPI) {
 			//Everything's Done! Send a Download link to User
 			msg = tbot.NewMessage(dj.User.ChatID, "Successful!"+
 				"\nLink: "+ HOST+ "/torrent/"+ dj.Metainfo.HashInfoBytes().String()+ ".torrent")
+			msg.ReplyToMessageID = dj.User.MessageID
 			bot.Send(msg)
 
 		} else {
