@@ -248,7 +248,11 @@ func serveTorrent(resp http.ResponseWriter, req *http.Request) {
 	err := c.Find(bson.M{"hash": hash}).One(di)
 
 	if err != nil {
-		http.Error(resp, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		if err != mgo.ErrNotFound {
+			Error.Println("Error in serving", err.Error())
+			http.Error(resp, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		http.Error(resp, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 
