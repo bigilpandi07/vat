@@ -138,12 +138,14 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 		err := i.parseURL(u.Message.Text)
 		if err != nil {
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Invalid URL")
+			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
 			return
 		}
 
 		if i.du.Scheme != "http" {
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Only http url scheme is supported")
+			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
 			Warn.Println("Invalid URL Scheme", i.du.String())
 			return
@@ -155,6 +157,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			Warn.Println("URL:", i.du.String())
 
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Problem in downloading file, Please retry")
+			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
 
 			//Delete Downloaded file, because this is probably just a part of something and no reason to keep it
@@ -168,6 +171,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			Warn.Println("Error in conversion", err.Error())
 
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Error in conversion")
+
 			msg.ReplyToMessageID = u.Message.MessageID
 			bot.Send(msg)
 
