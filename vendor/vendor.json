@@ -3,28 +3,28 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "zKCY7ejiOtTFAlpVNrg191ExfSI=",
+			"checksumSHA1": "pCi/HvUR+xcYzu1uvH6CZtv1w5I=",
 			"path": "github.com/anacrolix/missinggo",
-			"revision": "00e7d699a9063f958f13814802cd39e5ac9c85b4",
-			"revisionTime": "2017-03-27T05:39:47Z"
+			"revision": "9770b323e0ad1240c1e2727df30c8c68623a0508",
+			"revisionTime": "2017-07-06T03:42:10Z"
 		},
 		{
 			"checksumSHA1": "ua971oBANOt3tRv0ITaUWj+V6Xs=",
 			"path": "github.com/anacrolix/missinggo/slices",
-			"revision": "00e7d699a9063f958f13814802cd39e5ac9c85b4",
-			"revisionTime": "2017-03-27T05:39:47Z"
+			"revision": "9770b323e0ad1240c1e2727df30c8c68623a0508",
+			"revisionTime": "2017-07-06T03:42:10Z"
 		},
 		{
 			"checksumSHA1": "vqUdTgxBpEn9v2in1Gh9yfiJr70=",
 			"path": "github.com/anacrolix/torrent/bencode",
-			"revision": "58a24196ce836032e37f48bc3e70571a9cdc735b",
-			"revisionTime": "2017-04-25T00:39:44Z"
+			"revision": "95c89e96baef2d7afd760823e0ac3ac7f478b6cb",
+			"revisionTime": "2017-07-11T13:16:52Z"
 		},
 		{
-			"checksumSHA1": "+a5Dadqmx9L3aVCQ7M6WIU+ZyY0=",
+			"checksumSHA1": "KUtBQxxrYfTB9UbapeAdQ2MltTU=",
 			"path": "github.com/anacrolix/torrent/metainfo",
-			"revision": "58a24196ce836032e37f48bc3e70571a9cdc735b",
-			"revisionTime": "2017-04-25T00:39:44Z"
+			"revision": "95c89e96baef2d7afd760823e0ac3ac7f478b6cb",
+			"revisionTime": "2017-07-11T13:16:52Z"
 		},
 		{
 			"checksumSHA1": "c1lrLhhegA7fiaMWAmTXKTWHvmY=",

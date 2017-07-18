@@ -33,7 +33,7 @@ func (t *Input) createTorrent() error {
 		AnnounceList: AnnounceList,
 		CreatedBy:    "d2t_bot(https://t.me/d2t_bot) and https://github.com/anacrolix/torrent",
 		CreationDate: time.Now().Unix(),
-		URLList: []string{
+		UrlList: []string{
 			t.du.String(),
 		},
 	}
