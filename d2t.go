@@ -85,7 +85,7 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 
 		//	Use Webhook
 		Info.Println("Setting webhooks to fetch updates")
-		_, err := bot.SetWebhook(tbot.NewWebhookWithCert("https://ec2-13-228-77-227.ap-southeast-1.compute.amazonaws.com/d2t_converter/"+bot.Token, "cert.pem"))
+		_, err := bot.SetWebhook(tbot.NewWebhook("https://d2t-bot.herokuapp.com/d2t_converter/" + bot.Token))
 		if err != nil {
 			Error.Fatalln("Problem in setting webhook", err.Error())
 		}
@@ -98,7 +98,7 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 		http.HandleFunc("/torrent/", serveTorrent)
 
 		Info.Println("Starting HTTPS Server")
-		go http.ListenAndServeTLS(":"+PORT, "cert.pem", "key.pem", nil)
+		go http.ListenAndServe(":"+PORT, nil)
 
 		w, err := bot.GetWebhookInfo()
 		if err != nil {
@@ -112,7 +112,7 @@ func fetchUpdates(bot *tbot.BotAPI) tbot.UpdatesChannel {
 }
 
 func redirectToTelegram(resp http.ResponseWriter, req *http.Request) {
-	http.Redirect(resp, req, "https://t.me/d2t_converter", http.StatusTemporaryRedirect)
+	http.Redirect(resp, req, "https://t.me/d2t-bot", http.StatusTemporaryRedirect)
 }
 
 func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
