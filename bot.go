@@ -9,19 +9,26 @@ import (
 	"strconv"
 	"strings"
 	"gopkg.in/mgo.v2/bson"
+	"sync"
 )
 
 var (
 	TOKEN  = ""
 	PORT   = ""
 	GO_ENV = ""
-	q      *goque.Queue
 	dbSess *mgo.Session
+	q      *Queue
 )
 
 const (
 	HOST = "https://d2t-bot.ishanjain.me"
 )
+
+type Queue struct {
+	*goque.Queue
+	cond sync.Cond
+	mu   sync.Mutex
+}
 
 /*
  * Flow of this bot
@@ -60,7 +67,7 @@ func main() {
 	}
 
 	if GO_ENV == "development" {
-		bot.Debug = true
+		bot.Debug = false
 	}
 
 	Info.Println("Connecting to Database")
@@ -76,26 +83,52 @@ func main() {
 
 	Info.Printf("Authorized on account %s(@%s)\n", bot.Self.FirstName, bot.Self.UserName)
 
+	//Initialise Queue
+	q = &Queue{}
+	q.cond.L = &q.mu
+
 	//Create a persistent Queue
-	q, err = goque.OpenQueue("download_queue")
+	q.Queue, err = goque.OpenQueue("download_queue")
 	if err != nil {
 		Error.Fatalln("Error in creating Download Queue", err.Error())
 	}
 
 	Info.Println("Starting Queue Processor")
 
-	go startQueueProcessor(bot)
-
 	updates := fetchUpdates(bot)
 
-	for update := range updates {
-		if update.Message == nil {
-			//msg := tbot.NewMessage(update.Message.Chat.ID, "Sorry, I am not sure what you mean, Type /help to get help")
-			//bot.Send(msg)
-			continue
+	go func() {
+		for update := range updates {
+			if update.Message == nil {
+				//msg := tbot.NewMessage(update.Message.Chat.ID, "Sorry, I am not sure what you mean, Type /help to get help")
+				//bot.Send(msg)
+				continue
+			}
+
+			handleUpdates(bot, update)
+		}
+	}()
+
+	for {
+		Info.Println("Hold Lock")
+		q.cond.L.Lock()
+
+		item, err := q.Dequeue()
+		if err != nil && err != goque.ErrEmpty {
+			Error.Println("Error in Dequeueing", err.Error())
 		}
 
-		handleUpdates(bot, update)
+		if err == goque.ErrEmpty {
+			Info.Println("Waiting")
+			q.cond.Wait()
+		}
+		Info.Println("Release Lock")
+		q.cond.L.Unlock()
+
+		if item != nil {
+			//TODO:Only spawn a limited number of routines
+			go processQueue(item, bot)
+		}
 	}
 }
 
@@ -220,12 +253,13 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 		if err != nil {
 			Error.Println("Error in Enqueuing item", err.Error())
 		}
+		q.cond.Broadcast()
 
 		var j DownloadJob
 
 		item.ToObject(&j)
 
-		Info.Println(item.ID, i.User.Username, j.Filename, j.ContentType, j.Size, j.DU.String())
+		//Info.Println(item.ID, i.User.Username, j.Filename, j.ContentType, j.Size, j.DU.String())
 		msg := tbot.NewMessage(u.Message.Chat.ID,
 			"Queued Task \nID, " + strconv.FormatUint(item.ID, 10)+
 				"\nName: "+ i.Filename+
