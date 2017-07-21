@@ -20,3 +20,4 @@ d2t_converter
 /vendor/golang.org/
 /download_queue/
 /vendor/gopkg.in/
+test.go

@@ -99,7 +99,7 @@ func (t *DownloadJob) save() error {
 	if err != nil {
 		return err
 	}
-	Info.Println("Saved", t.DU.String())
+	//Info.Println("Saved", t.DU.String())
 	return nil
 }
 

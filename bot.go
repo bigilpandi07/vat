@@ -10,16 +10,15 @@ import (
 	"strings"
 	"gopkg.in/mgo.v2/bson"
 	"sync"
-	"time"
 )
 
 var (
-	TOKEN      = ""
-	PORT       = ""
-	GO_ENV     = ""
-	dbSess     *mgo.Session
-	q          *Queue
-	workerPool chan func(bot *tbot.BotAPI)
+	TOKEN               = ""
+	PORT                = ""
+	GO_ENV              = ""
+	dbSess              *mgo.Session
+	q                   *Queue
+	MAX_CONCURRENT_JOBS = 5
 )
 
 const (
@@ -41,10 +40,6 @@ type Queue struct {
  * Start Processing top item from queue and send a processing message to the user who queued that link
  * Process link and upon completion store it in database and send the a download link to the user
  */
-
-func init() {
-	workerPool = make(chan func(bot *tbot.BotAPI), 10)
-}
 
 func main() {
 	TOKEN = os.Getenv("TOKEN")
@@ -112,68 +107,40 @@ func main() {
 		}
 	}()
 
-	for {
+	connRoutines := make(chan struct{}, MAX_CONCURRENT_JOBS)
 
-		//Get a worker from pool
-		w, err := getWorker()
+	for i := 0; i < MAX_CONCURRENT_JOBS; i++ {
+		connRoutines <- struct{}{}
+	}
+
+	done := make(chan bool)
+	go func() {
+		for {
+			<-done
+			connRoutines <- struct{}{}
+		}
+	}()
+
+	for {
+		q.cond.L.Lock()
+		item, err := q.Dequeue()
 		if err != nil {
-			continue
+			if err != goque.ErrEmpty {
+				Warn.Println("Error in De-Queueing", err.Error())
+				continue
+			}
 		}
 
-		w(bot)
+		if err == goque.ErrEmpty {
+			q.cond.Wait()
+		}
+		q.cond.L.Unlock()
+		if item != nil {
 
-		//Put it back in Queue
-		go queueWorker(worker)
-	}
-}
+			<-connRoutines
+			go processQueue(item, bot, done)
 
-func worker(bot *tbot.BotAPI) {
-	Info.Println("Hold Lock")
-	q.cond.L.Lock()
-
-	item, err := q.Dequeue()
-	if err != nil && err != goque.ErrEmpty {
-		Error.Println("Error in Dequeueing", err.Error())
-	}
-
-	if err == goque.ErrEmpty {
-		Info.Println("Waiting")
-		q.cond.Wait()
-	}
-
-	//When q.cond.wait executes it freezes the state too
-	//So, at that time, item is nil and err has some value
-	//So, I put check if item is not nil, if it is, Skip
-	//It'll get it in the next run of for loop
-
-	if item != nil {
-		processQueue(item, bot)
-	}
-	Info.Println("Release Lock")
-	q.cond.L.Unlock()
-
-}
-
-func getWorker() (func(*tbot.BotAPI), error) {
-
-	//Gets a worker from worker Pool.
-	//If a worker is free It'll return that
-	//And if a worker is not free, It'll wait for 100ms if one becomes free, Great!
-	//if no, It'll make a new worker and return that
-	select {
-	case wp := <-workerPool:
-		return wp, nil
-	case <-time.After(100 * time.Millisecond):
-		return worker, nil
-	}
-}
-
-func queueWorker(w func(*tbot.BotAPI)) {
-	select {
-	case workerPool <- w:
-		//	Re-enqueued worker
-	case <-time.After(1 * time.Second):
-		//	Queue full, Do nothing!
+		}
 	}
 }
 

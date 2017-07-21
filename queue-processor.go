@@ -6,8 +6,8 @@ import (
 	"strconv"
 )
 
-func processQueue(item *goque.Item, bot *tbot.BotAPI) {
-
+func processQueue(item *goque.Item, bot *tbot.BotAPI, done chan bool) {
+	defer func() { done <- true }()
 	var dj DownloadJob
 
 	err := item.ToObject(&dj)
@@ -15,8 +15,8 @@ func processQueue(item *goque.Item, bot *tbot.BotAPI) {
 		Error.Println("Error in converting item to object", err.Error())
 		return
 	}
-	//Info.Println("Processing", dj.DU.String())
-	//Info.Println("Size", dj.SizeInMiB)
+	Info.Println("Processing", dj.DU.String())
+	Info.Println("Size", dj.SizeInMiB)
 
 	//Send a message to user as well
 	msg := tbot.NewMessage(dj.User.ChatID,
