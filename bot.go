@@ -10,14 +10,16 @@ import (
 	"strings"
 	"gopkg.in/mgo.v2/bson"
 	"sync"
+	"time"
 )
 
 var (
-	TOKEN  = ""
-	PORT   = ""
-	GO_ENV = ""
-	dbSess *mgo.Session
-	q      *Queue
+	TOKEN      = ""
+	PORT       = ""
+	GO_ENV     = ""
+	dbSess     *mgo.Session
+	q          *Queue
+	workerPool chan func(bot *tbot.BotAPI)
 )
 
 const (
@@ -39,6 +41,10 @@ type Queue struct {
  * Start Processing top item from queue and send a processing message to the user who queued that link
  * Process link and upon completion store it in database and send the a download link to the user
  */
+
+func init() {
+	workerPool = make(chan func(bot *tbot.BotAPI), 10)
+}
 
 func main() {
 	TOKEN = os.Getenv("TOKEN")
@@ -92,9 +98,6 @@ func main() {
 	if err != nil {
 		Error.Fatalln("Error in creating Download Queue", err.Error())
 	}
-
-	Info.Println("Starting Queue Processor")
-
 	updates := fetchUpdates(bot)
 
 	go func() {
@@ -110,25 +113,67 @@ func main() {
 	}()
 
 	for {
-		Info.Println("Hold Lock")
-		q.cond.L.Lock()
 
-		item, err := q.Dequeue()
-		if err != nil && err != goque.ErrEmpty {
-			Error.Println("Error in Dequeueing", err.Error())
+		//Get a worker from pool
+		w, err := getWorker()
+		if err != nil {
+			continue
 		}
 
-		if err == goque.ErrEmpty {
-			Info.Println("Waiting")
-			q.cond.Wait()
-		}
-		Info.Println("Release Lock")
-		q.cond.L.Unlock()
+		w(bot)
 
-		if item != nil {
-			//TODO:Only spawn a limited number of routines
-			go processQueue(item, bot)
-		}
+		//Put it back in Queue
+		go queueWorker(worker)
+	}
+}
+
+func worker(bot *tbot.BotAPI) {
+	Info.Println("Hold Lock")
+	q.cond.L.Lock()
+
+	item, err := q.Dequeue()
+	if err != nil && err != goque.ErrEmpty {
+		Error.Println("Error in Dequeueing", err.Error())
+	}
+
+	if err == goque.ErrEmpty {
+		Info.Println("Waiting")
+		q.cond.Wait()
+	}
+
+	//When q.cond.wait executes it freezes the state too
+	//So, at that time, item is nil and err has some value
+	//So, I put check if item is not nil, if it is, Skip
+	//It'll get it in the next run of for loop
+
+	if item != nil {
+		processQueue(item, bot)
+	}
+	Info.Println("Release Lock")
+	q.cond.L.Unlock()
+
+}
+
+func getWorker() (func(*tbot.BotAPI), error) {
+
+	//Gets a worker from worker Pool.
+	//If a worker is free It'll return that
+	//And if a worker is not free, It'll wait for 100ms if one becomes free, Great!
+	//if no, It'll make a new worker and return that
+	select {
+	case wp := <-workerPool:
+		return wp, nil
+	case <-time.After(100 * time.Millisecond):
+		return worker, nil
+	}
+}
+
+func queueWorker(w func(*tbot.BotAPI)) {
+	select {
+	case workerPool <- w:
+		//	Re-enqueued worker
+	case <-time.After(1 * time.Second):
+		//	Queue full, Do nothing!
 	}
 }
 
@@ -240,7 +285,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 		}
 
 		if item, err := find(i); err == nil {
-			Info.Println("Already in Database")
+			//Info.Println("Already in Database")
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Successful!"+
 				"\nLink: "+ HOST+ "/torrent/"+ item.Hash+ ".torrent")
 
