@@ -4,11 +4,11 @@ import (
 	"github.com/beeker1121/goque"
 	tbot "github.com/go-telegram-bot-api/telegram-bot-api"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"gopkg.in/mgo.v2/bson"
 	"sync"
 )
 
@@ -87,7 +87,7 @@ func main() {
 	//Initialise Queue
 	q = &Queue{}
 	q.cond.L = &q.mu
-
+	defer q.Close()
 	//Create a persistent Queue
 	q.Queue, err = goque.OpenQueue("download_queue")
 	if err != nil {
@@ -244,15 +244,16 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 		}
 
 		//Store Data about the user
-		i.User = UserData{
+		i.User = []UserData{{
 			MessageID: u.Message.MessageID,
 			Username:  u.Message.From.UserName,
 			ChatID:    u.Message.Chat.ID,
 			UserID:    u.Message.From.ID,
-		}
+		}, }
 
-		if item, err := find(i); err == nil {
-			//Info.Println("Already in Database")
+		//Check if url already exists in database
+		if item, err := findindb(i); err == nil {
+
 			msg := tbot.NewMessage(u.Message.Chat.ID, "Successful!"+
 				"\nLink: "+ HOST+ "/torrent/"+ item.Hash+ ".torrent")
 
@@ -261,6 +262,7 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 			return
 		}
 
+		//Put the job in Queue
 		item, err := q.EnqueueObject(i)
 		if err != nil {
 			Error.Println("Error in Enqueuing item", err.Error())
@@ -280,6 +282,13 @@ func handleUpdates(bot *tbot.BotAPI, u tbot.Update) {
 				"\nURL: "+ i.DU.String()+
 				"\n\nYou'll notified about the progress")
 		bot.Send(msg)
+
+		//	Also store the url separately, So, if someone sends a url that is already in queue, It won't be added twice
+
+		err = storeURLInMongoDB(&j, item.ID)
+		if err != nil {
+			Warn.Println("Error in storing job in queue", err.Error())
+		}
 
 	}
 }

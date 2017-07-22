@@ -5,6 +5,7 @@ import (
 	"github.com/anacrolix/torrent/bencode"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/getlantern/errors"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"io"
 	"net/http"
@@ -27,7 +28,7 @@ type DownloadJob struct {
 	ContentType string
 	Size        int64
 	SizeInMiB   float64
-	User        UserData
+	User        []UserData
 }
 
 type UserData struct {
@@ -46,6 +47,11 @@ type DatabaseItem struct {
 	File        bson.Binary
 }
 
+type MongoQueueRecord struct {
+	URL string `bson:"_id"`
+	ID  uint64 `bson:"job_id"`
+}
+
 //Parse URL and make sure it's a valid one
 func (t *DownloadJob) parseURL(u string) error {
 	a, err := url.ParseRequestURI(u)
@@ -55,8 +61,7 @@ func (t *DownloadJob) parseURL(u string) error {
 	}
 	t.DU = a
 	//Set Filename name
-	p := t.DU.Path[strings.LastIndex(t.DU.Path, "/")+1:]
-	t.Filename = p
+	t.Filename = t.DU.Path[strings.LastIndex(t.DU.Path, "/")+1:]
 
 	return nil
 }
@@ -112,7 +117,7 @@ func (t *DownloadJob) save() error {
 //Checking content length, type and E-tags(if it has etags) to make sure if it's same
 //If it is then it'll proceed to search the database after removing all query parameters
 //If there is a result, return that, If there is no such url, go through the normal process
-func find(t *DownloadJob) (*DatabaseItem, error) {
+func findindb(t *DownloadJob) (*DatabaseItem, error) {
 	sess := dbSess.Copy()
 	c := sess.DB("burnbitbot").C("data")
 
@@ -124,6 +129,36 @@ func find(t *DownloadJob) (*DatabaseItem, error) {
 	}
 
 	return di, nil
+}
+
+func findinQueue(t *DownloadJob) (*MongoQueueRecord, error) {
+	sess := dbSess.Copy()
+	c := sess.DB("burnbitbot").C("queue")
+
+	u := &MongoQueueRecord{}
+	err := c.Find(bson.M{"_id": t.DU.String()}).One(&u)
+	if err != nil {
+		if err != mgo.ErrNotFound {
+			return nil, err
+		}
+
+		if err == mgo.ErrNotFound {
+			return nil, nil
+		}
+	}
+	return u, nil
+}
+
+func storeURLInMongoDB(t *DownloadJob, id uint64) error {
+	sess := dbSess.Copy()
+	c := sess.DB("burnbitbot").C("queue")
+
+	err := c.Insert(bson.M{"_id": t.DU.String(), "job_id": id})
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //Removes Downloaded Files
